@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Games | চটজলদি খেলা</title>
+    <title>Mini Games | চটজলদি খেলা | ألعاب صغيرة</title>
+    
+    <!-- SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FF8400'/><path d='M30 30 L70 30 L70 70 L30 70 Z' fill='white' opacity='0.3'/><circle cx='50' cy='50' r='20' fill='white'/></svg>">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Fredoka+One&family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -16,14 +20,27 @@
         }
 
         body {
-            font-family: 'Hind Siliguri', 'Fredoka One', sans-serif;
+            font-family: 'Hind Siliguri', 'Fredoka One', 'Noto Sans Arabic', sans-serif;
             background-color: #f0f9ff;
             background-image: radial-gradient(#d1e9ff 2px, transparent 2px);
             background-size: 32px 32px;
         }
 
-        .arabic-text {
-            font-family: 'Noto Sans Arabic', sans-serif;
+        /* Language Switcher Styles */
+        .lang-container {
+            position: relative;
+            top: -4px; /* Slight subsidence effect */
+            z-index: 50;
+        }
+
+        .lang-btn {
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn.active {
+            background-color: var(--primary-orange);
+            color: white;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .game-card {
@@ -47,25 +64,24 @@
             100% { transform: translatey(0px); }
         }
 
-        .btn-toggle {
-            transition: all 0.2s;
-        }
-
-        .btn-toggle:active {
-            transform: scale(0.95);
+        [dir="rtl"] .arabic-font {
+            font-family: 'Noto Sans Arabic', sans-serif;
         }
     </style>
 </head>
 <body class="min-h-screen pb-20">
 
-    <!-- Language Toggle & Header -->
-    <header class="container mx-auto px-4 pt-8 pb-12 text-center">
-        <div class="flex justify-end mb-6">
-            <button onclick="toggleLanguage()" id="langBtn" class="btn-toggle bg-white border-4 border-blue-400 px-6 py-2 rounded-full font-bold text-blue-600 hover:bg-blue-50 shadow-lg">
-                English
-            </button>
+    <!-- Top Center Language Switcher -->
+    <div class="flex justify-center lang-container">
+        <div class="bg-white border-4 border-blue-400 rounded-b-3xl px-2 py-1 flex gap-1 shadow-xl">
+            <button onclick="setLanguage('en')" id="btn-en" class="lang-btn px-4 py-1 rounded-2xl font-bold text-sm md:text-base">English</button>
+            <button onclick="setLanguage('bn')" id="btn-bn" class="lang-btn px-4 py-1 rounded-2xl font-bold text-sm md:text-base active">বাংলা</button>
+            <button onclick="setLanguage('ar')" id="btn-ar" class="lang-btn px-4 py-1 rounded-2xl font-bold text-sm md:text-base">العربية</button>
         </div>
+    </div>
 
+    <!-- Header -->
+    <header class="container mx-auto px-4 pt-12 pb-12 text-center">
         <div class="relative inline-block">
             <h1 id="mainTitle" class="text-5xl md:text-7xl font-bold text-orange-500 drop-shadow-lg mb-4">
                 চটজলদি খেলা
@@ -78,9 +94,6 @@
         <p id="subTitle" class="text-xl md:text-2xl text-blue-700 font-medium max-w-2xl mx-auto mt-4">
             এসো খেলি, শিখি এবং মজা করি!
         </p>
-
-        <!-- Fun Arabic Welcome Text -->
-        <p class="arabic-text text-2xl text-pink-500 mt-4 dir-rtl">أهلاً بكم في عالم الألعاب</p>
     </header>
 
     <!-- Games Grid -->
@@ -92,19 +105,18 @@
 
     <!-- Footer -->
     <footer class="mt-20 text-center text-blue-400 font-medium">
-        <p>© <span id="year"></span> Mini Games - Built with ❤️</p>
+        <p>© <span id="year"></span> <span id="footerText">Mini Games - Built with ❤️</span></p>
     </footer>
 
     <script>
-        // Game Data Configuration
-        // To add a new game, simply add a new object to this array
         const games = [
             {
                 id: 'dot-connector',
-                title: { bn: 'বিন্দু সংযোগ', en: 'Dot Connector' },
+                title: { bn: 'বিন্দু সংযোগ', en: 'Dot Connector', ar: 'توصيل النقاط' },
                 description: { 
                     bn: 'বিন্দুগুলো এক টানে যুক্ত করো, কোনো বিন্দু দুবার ছোঁয়া যাবে না!', 
-                    en: 'Connect all the dots in a single path without repeating any dot!' 
+                    en: 'Connect all the dots in a single path without repeating any dot!',
+                    ar: 'قم بتوصيل جميع النقاط في مسار واحد دون تكرار أي نقطة!'
                 },
                 link: './dot-connector/',
                 icon: '🎨',
@@ -113,10 +125,11 @@
             },
             {
                 id: 'number-pattern',
-                title: { bn: 'সংখ্যার ধাঁধা', en: 'Number Pattern' },
+                title: { bn: 'সংখ্যার ধাঁধা', en: 'Number Pattern', ar: 'نمط الأرقام' },
                 description: { 
                     bn: 'প্যাটার্নটি বুঝে পরবর্তী সংখ্যাটি বের করো।', 
-                    en: 'Understand the pattern and guess the next number in the sequence.' 
+                    en: 'Understand the pattern and guess the next number in the sequence.',
+                    ar: 'افهم النمط وخمن الرقم التالي في التسلسل.'
                 },
                 link: 'https://mayeenulislam.github.io/number-pattern-explorer',
                 icon: '🔢',
@@ -125,10 +138,11 @@
             },
             {
                 id: 'table-quiz',
-                title: { bn: 'নামতার কুইজ', en: 'Number Table Quiz' },
+                title: { bn: 'নামতার কুইজ', en: 'Number Table Quiz', ar: 'اختبار جدول الأرقام' },
                 description: { 
                     bn: 'সময়ের সাথে পাল্লা দিয়ে নামতার উত্তর দাও!', 
-                    en: 'Take a timed quiz on multiplication tables and test your speed.' 
+                    en: 'Take a timed quiz on multiplication tables and test your speed.',
+                    ar: 'قم بإجراء اختبار موقوت على جداول الضرب واختبر سرعتك.'
                 },
                 link: 'https://mayeenulislam.github.io/number-table-quiz',
                 icon: '⏱️',
@@ -144,13 +158,19 @@
                 title: 'চটজলদি খেলা',
                 subtitle: 'এসো খেলি, শিখি এবং মজা করি!',
                 playBtn: 'খেলতে যাও',
-                langBtn: 'English'
+                footer: 'মিনি গেমস - ভালোবাসা দিয়ে তৈরি ❤️'
             },
             en: {
                 title: 'Mini Games',
                 subtitle: 'Let\'s play, learn and have fun together!',
                 playBtn: 'Play Now',
-                langBtn: 'বাংলা'
+                footer: 'Mini Games - Built with ❤️'
+            },
+            ar: {
+                title: 'ألعاب صغيرة',
+                subtitle: 'لنلعب ونتعلم ونمرح معاً!',
+                playBtn: 'العب الآن',
+                footer: 'ألعاب صغيرة - صُنعت بحب ❤️'
             }
         };
 
@@ -169,30 +189,38 @@
                         ${game.description[currentLang]}
                     </p>
                     <a href="${game.link}" target="_blank" class="w-full py-4 px-6 bg-white rounded-2xl font-bold text-xl text-gray-800 border-2 border-gray-200 hover:bg-orange-500 hover:text-white hover:border-orange-600 transition-colors shadow-sm">
-                        ${content[currentLang].playBtn} →
+                        ${content[currentLang].playBtn} ${currentLang === 'ar' ? '←' : '→'}
                     </a>
                 `;
                 grid.appendChild(card);
             });
         }
 
-        function toggleLanguage() {
-            currentLang = currentLang === 'bn' ? 'en' : 'bn';
+        function setLanguage(lang) {
+            currentLang = lang;
             updateUI();
         }
 
         function updateUI() {
+            // Update direction and font classes
             document.documentElement.lang = currentLang;
+            document.body.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            
+            // Update Title and Subtitle
             document.getElementById('mainTitle').innerText = content[currentLang].title;
             document.getElementById('subTitle').innerText = content[currentLang].subtitle;
-            document.getElementById('langBtn').innerText = content[currentLang].langBtn;
+            document.getElementById('footerText').innerText = content[currentLang].footer;
+
+            // Update active state of buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${currentLang}`).classList.add('active');
+            
             renderGames();
         }
 
         // Initialize
         document.getElementById('year').innerText = new Date().getFullYear();
         updateUI();
-
     </script>
 </body>
 </html>
