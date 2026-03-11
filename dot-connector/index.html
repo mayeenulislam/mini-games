@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Connecting Dots Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap');
+        
+        body {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #0f172a;
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+        .dot {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s;
+        }
+        .dot.active {
+            transform: scale(1.4);
+            background-color: #38bdf8;
+            box-shadow: 0 0 15px #0ea5e9;
+        }
+        .line {
+            pointer-events: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.3s;
+        }
+        #game-container {
+            aspect-ratio: 1/1;
+            max-width: 450px;
+            width: 90vw;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 text-white">
+
+    <!-- Language Toggle -->
+    <div class="absolute top-4 right-4">
+        <button id="lang-toggle" class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-full text-sm font-bold hover:bg-slate-700 transition-colors">
+            English
+        </button>
+    </div>
+
+    <div class="text-center mb-6">
+        <h1 id="ui-title" class="text-3xl font-bold mb-2 bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent">
+            ডট কানেক্টর
+        </h1>
+        <p id="ui-sub" class="text-slate-400 text-sm">একটি অবিচ্ছিন্ন রেখা দিয়ে সব ডট সংযুক্ত করুন।</p>
+        <p id="ui-rules" class="text-slate-500 text-xs mt-1">নিয়ম: পেছনে ফেরা যাবে না। পথ ক্রস করা যাবে না।</p>
+    </div>
+
+    <div id="game-container" class="relative bg-slate-800/50 rounded-2xl p-4 shadow-2xl border border-slate-700">
+        <svg id="svg-layer" class="absolute inset-0 w-full h-full"></svg>
+        <div id="dots-grid" class="absolute inset-0 grid grid-cols-5 grid-rows-5 gap-0 p-8">
+            <!-- Dots will be generated here -->
+        </div>
+    </div>
+
+    <div class="mt-8 flex gap-4">
+        <button id="reset-btn" class="px-8 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors">
+            রিসেট
+        </button>
+    </div>
+
+    <!-- Status Modal -->
+    <div id="status-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-6">
+        <div class="bg-slate-800 border border-slate-700 p-8 rounded-3xl text-center max-w-sm w-full">
+            <h2 id="modal-title" class="text-4xl font-black mb-4"></h2>
+            <p id="modal-message" class="text-slate-300 mb-8"></p>
+            <button id="modal-btn" class="w-full py-4 bg-sky-500 hover:bg-sky-400 rounded-xl font-bold text-lg transition-transform active:scale-95">
+                আবার চেষ্টা করুন
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const TRANSLATIONS = {
+            bn: {
+                title: "ডট কানেক্টর",
+                sub: "একটি অবিচ্ছিন্ন রেখা দিয়ে সব ডট সংযুক্ত করুন।",
+                rules: "নিয়ম: পেছনে ফেরা যাবে না। পথ ক্রস করা যাবে না।",
+                reset: "রিসেট",
+                successTitle: "চমৎকার!",
+                successMsg: "আপনি সফলভাবে সব ডট যুক্ত করেছেন।",
+                failTitle: "ব্যর্থ!",
+                failMsg: (left) => `আর কোনো চাল নেই! আপনি ${left}টি ডট মিস করেছেন।`,
+                btnRetry: "আবার চেষ্টা করুন",
+                btnNext: "পরবর্তী লেভেল",
+                langBtn: "English"
+            },
+            en: {
+                title: "Dot Connector",
+                sub: "Connect all dots with one continuous line.",
+                rules: "Rules: No backtracking. No crossing paths.",
+                reset: "Reset",
+                successTitle: "SUCCESS!",
+                successMsg: "You connected all the dots perfectly.",
+                failTitle: "FAILED",
+                failMsg: (left) => `No moves left! You missed ${left} dots.`,
+                btnRetry: "Try Again",
+                btnNext: "Next Level",
+                langBtn: "বাংলা"
+            }
+        };
+
+        let currentLang = 'bn';
+
+        const GRID_LAYOUT = [
+            [0, 1, 2],
+            [0, 1, 2, 3, 4],
+            [0, 1, 2, 3, 4],
+            [1, 2, 3, 4],
+            [1, 2, 3]
+        ];
+
+        const container = document.getElementById('dots-grid');
+        const svg = document.getElementById('svg-layer');
+        const resetBtn = document.getElementById('reset-btn');
+        const langToggle = document.getElementById('lang-toggle');
+        const modal = document.getElementById('status-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-message');
+        const modalBtn = document.getElementById('modal-btn');
+
+        // UI Elements
+        const uiTitle = document.getElementById('ui-title');
+        const uiSub = document.getElementById('ui-sub');
+        const uiRules = document.getElementById('ui-rules');
+
+        let dots = [];
+        let path = [];
+        let isDrawing = false;
+        let totalDotsCount = 0;
+
+        function updateUILanguage() {
+            const t = TRANSLATIONS[currentLang];
+            uiTitle.innerText = t.title;
+            uiSub.innerText = t.sub;
+            uiRules.innerText = t.rules;
+            resetBtn.innerText = t.reset;
+            langToggle.innerText = t.langBtn;
+            document.documentElement.lang = currentLang;
+        }
+
+        function initGame() {
+            container.innerHTML = '';
+            svg.innerHTML = '';
+            dots = [];
+            path = [];
+            isDrawing = false;
+            totalDotsCount = 0;
+
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const dotId = `dot-${r}-${c}`;
+                    const dotElement = document.createElement('div');
+                    dotElement.className = 'flex items-center justify-center';
+                    
+                    if (GRID_LAYOUT[r] && GRID_LAYOUT[r].includes(c)) {
+                        const innerDot = document.createElement('div');
+                        innerDot.id = dotId;
+                        innerDot.className = 'dot w-4 h-4 rounded-full bg-slate-500 cursor-pointer';
+                        dotElement.appendChild(innerDot);
+                        
+                        dots.push({
+                            id: dotId,
+                            row: r,
+                            col: c,
+                            element: innerDot
+                        });
+                        totalDotsCount++;
+                    }
+                    container.appendChild(dotElement);
+                }
+            }
+            updateUILanguage();
+        }
+
+        function getDotFromEvent(e) {
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if (el && el.classList.contains('dot')) {
+                return dots.find(d => d.id === el.id);
+            }
+            return null;
+        }
+
+        function addToPath(dot) {
+            if (path.length > 0) {
+                const lastDot = path[path.length - 1];
+                if (path.includes(dot)) return;
+
+                const rowDiff = Math.abs(lastDot.row - dot.row);
+                const colDiff = Math.abs(lastDot.col - dot.col);
+                if (!((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1))) {
+                    return;
+                }
+                drawLine(lastDot, dot);
+            }
+
+            path.push(dot);
+            dot.element.classList.add('active');
+        }
+
+        function drawLine(start, end) {
+            const sRect = start.element.getBoundingClientRect();
+            const eRect = end.element.getBoundingClientRect();
+            const cRect = svg.getBoundingClientRect();
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', sRect.left + sRect.width / 2 - cRect.left);
+            line.setAttribute('y1', sRect.top + sRect.height / 2 - cRect.top);
+            line.setAttribute('x2', eRect.left + eRect.width / 2 - cRect.left);
+            line.setAttribute('y2', eRect.top + eRect.height / 2 - cRect.top);
+            line.setAttribute('stroke', '#38bdf8');
+            line.setAttribute('stroke-width', '4');
+            line.classList.add('line');
+            svg.appendChild(line);
+        }
+
+        let previewLine = null;
+        function updatePreviewLine(e) {
+            if (path.length === 0) return;
+            const lastDot = path[path.length - 1];
+            const sRect = lastDot.element.getBoundingClientRect();
+            const cRect = svg.getBoundingClientRect();
+
+            if (!previewLine) {
+                previewLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                previewLine.setAttribute('stroke', '#38bdf888');
+                previewLine.setAttribute('stroke-width', '3');
+                previewLine.setAttribute('stroke-dasharray', '5,5');
+                svg.appendChild(previewLine);
+            }
+
+            previewLine.setAttribute('x1', sRect.left + sRect.width / 2 - cRect.left);
+            previewLine.setAttribute('y1', sRect.top + sRect.height / 2 - cRect.top);
+            previewLine.setAttribute('x2', e.clientX - cRect.left);
+            previewLine.setAttribute('y2', e.clientY - cRect.top);
+        }
+
+        function checkWinCondition() {
+            const t = TRANSLATIONS[currentLang];
+            if (path.length === totalDotsCount) {
+                showModal(t.successTitle, t.successMsg, t.btnNext);
+            } else if (path.length > 0) {
+                const lastDot = path[path.length - 1];
+                const hasValidMove = dots.some(d => {
+                    if (path.includes(d)) return false;
+                    const rd = Math.abs(lastDot.row - d.row);
+                    const cd = Math.abs(lastDot.col - d.col);
+                    return (rd === 1 && cd === 0) || (rd === 0 && cd === 1);
+                });
+
+                if (!hasValidMove && path.length < totalDotsCount) {
+                    showModal(t.failTitle, t.failMsg(totalDotsCount - path.length), t.btnRetry);
+                }
+            }
+        }
+
+        function showModal(title, message, btnText) {
+            modalTitle.innerText = title;
+            modalTitle.className = (title === TRANSLATIONS.bn.successTitle || title === TRANSLATIONS.en.successTitle) 
+                ? "text-4xl font-black mb-4 text-emerald-400" 
+                : "text-4xl font-black mb-4 text-rose-500";
+            modalMsg.innerText = message;
+            modalBtn.innerText = btnText;
+            modal.style.display = 'flex';
+        }
+
+        // Interactions
+        const handleStart = (e) => {
+            const target = getDotFromEvent(e);
+            if (target) {
+                isDrawing = true;
+                addToPath(target);
+            }
+        };
+
+        const handleMove = (e) => {
+            if (!isDrawing) return;
+            const target = getDotFromEvent(e);
+            if (target) addToPath(target);
+            updatePreviewLine(e);
+        };
+
+        const handleEnd = () => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (previewLine) { previewLine.remove(); previewLine = null; }
+            checkWinCondition();
+        };
+
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchstart', (e) => handleStart(e.touches[0]), { passive: false });
+        window.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e.touches[0]); }, { passive: false });
+        window.addEventListener('touchend', handleEnd);
+
+        langToggle.onclick = () => {
+            currentLang = currentLang === 'bn' ? 'en' : 'bn';
+            updateUILanguage();
+        };
+
+        resetBtn.onclick = initGame;
+        modalBtn.onclick = () => { modal.style.display = 'none'; initGame(); };
+
+        window.onload = initGame;
+        window.onresize = initGame;
+    </script>
+</body>
+</html>
